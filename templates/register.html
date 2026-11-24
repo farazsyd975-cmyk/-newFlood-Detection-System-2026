@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up{% endblock %}
+
+{% block content %}
+<div class="auth-page-container">
+
+    <div class="auth-card card">
+        <div class="auth-header">
+            <span class="auth-icon">📝</span>
+            <h1 class="auth-title">Create Account</h1>
+            <p class="auth-subtitle">Register with your email address</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, msg in messages %}
+                        <div class="flash-alert flash-{{ category }}">{{ msg }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('register') }}" class="auth-form">
+            <div class="form-group">
+                <label for="name" class="form-label">Full Name</label>
+                <input type="text" id="name" name="name" class="form-input" 
+                       placeholder="e.g., Harpreet Singh" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" id="email" name="email" class="form-input" 
+                       placeholder="name@example.com" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" name="password" class="form-input" 
+                       placeholder="Create a password" required minlength="4">
+            </div>
+
+            <div class="auth-actions">
+                <button type="submit" class="btn btn-primary btn-block">
+                    Create Account
+                </button>
+            </div>
+        </form>
+
+        <div class="auth-footer-links">
+            <span>Already have an account? <a href="{{ url_for('login') }}">Log in here</a></span>
+            <span>•</span>
+            <a href="{{ url_for('index') }}">Back to Flood Map</a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

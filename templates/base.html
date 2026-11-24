@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Punjab Flood Intelligence Platform{% endblock %} - Disaster Response & Risk Planning</title>
+    
+    <!-- Google Fonts: Inter & Roboto Mono for Engineering Telemetry -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Leaflet CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Application CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <!-- Header Navigation Bar -->
+    <header class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="{{ url_for('index') }}" class="brand-link">
+                    <span class="brand-icon">🌊</span>
+                    <div class="brand-text">
+                        <span class="brand-title">FLOOD INTELLIGENCE PLATFORM</span>
+                        <span class="brand-subtitle">Punjab Hydrology, Cause-Aware ML & Response Planning</span>
+                    </div>
+                </a>
+            </div>
+
+            <nav class="nav-menu">
+                <a href="{{ url_for('index') }}" class="nav-item {% if request.endpoint == 'index' %}active{% endif %}">
+                    🗺️ Map & Predictor
+                </a>
+                <a href="{{ url_for('analytics') }}" class="nav-item {% if request.endpoint == 'analytics' %}active{% endif %}">
+                    📊 Analytics
+                </a>
+                <a href="{{ url_for('alerts') }}" class="nav-item nav-alert-link {% if request.endpoint == 'alerts' %}active{% endif %}">
+                    🚨 Alerts
+                    <span id="nav-alerts-badge" class="alert-pill-badge" style="display: none;">0</span>
+                </a>
+                <a href="{{ url_for('response_planning') }}" class="nav-item {% if request.endpoint == 'response_planning' %}active{% endif %}">
+                    🛡️ Response Plan
+                </a>
+                <a href="{{ url_for('data_management') }}" class="nav-item {% if request.endpoint == 'data_management' %}active{% endif %}">
+                    📁 Data & Export
+                </a>
+                <a href="{{ url_for('model_info') }}" class="nav-item {% if request.endpoint == 'model_info' %}active{% endif %}">
+                    🤖 Model & XAI
+                </a>
+                <a href="{{ url_for('history') }}" class="nav-item {% if request.endpoint == 'history' %}active{% endif %}">
+                    📜 History
+                </a>
+                <a href="{{ url_for('documentation') }}" class="nav-item {% if request.endpoint == 'documentation' %}active{% endif %}">
+                    📖 Docs
+                </a>
+
+                {% if session.get('user_email') %}
+                    <span class="nav-user-badge" title="{{ session.get('user_email') }}">
+                        👤 {{ session.get('user_name', session.get('user_email')) }}
+                    </span>
+                    <a href="{{ url_for('logout') }}" class="nav-item nav-auth-btn">
+                        Logout
+                    </a>
+                {% else %}
+                    <a href="{{ url_for('login') }}" class="nav-item nav-auth-btn {% if request.endpoint in ['login', 'register'] %}active{% endif %}">
+                        Login
+                    </a>
+                {% endif %}
+            </nav>
+
+            <div class="nav-badge">
+                <span class="status-indicator"></span>
+                <span class="status-text">Dual-ML Active (RF-130)</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="content-wrapper">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+        <div class="footer-container">
+            <div class="footer-col">
+                <p class="footer-heading">FLOOD INTELLIGENCE & EARLY WARNING PLATFORM</p>
+                <p class="footer-desc">
+                    An advanced environmental artificial intelligence platform for real-time flood hazard prediction, cause-aware diagnostic classification, and operational disaster response prioritization across Punjab river basins.
+                </p>
+            </div>
+            <div class="footer-col">
+                <p class="footer-heading">MONITORED BASINS & REGIONS</p>
+                <p class="footer-locations">Jalandhar • Phagwara • Amritsar • Ludhiana • Kapurthala • Hoshiarpur • Nawanshahr</p>
+                <p class="footer-drainage-note">River Basins: Sutlej, Beas, Ravi, Buddha Nullah, Kali Bein, East Bein, Shivalik Choes</p>
+            </div>
+            <div class="footer-col text-right">
+                <p class="footer-heading">SCIENTIFIC PROVENANCE</p>
+                <p class="footer-desc">
+                    Powered by Python Flask, Scikit-Learn Random Forest, and Leaflet.js OpenStreetMap. Atmospheric telemetry ingested via Open-Meteo REST API with fail-safe regional hydrological baselines.
+                </p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <span>Punjab Disaster Management Information System • Advanced AI/ML Engineering Platform</span>
+            <span>Database: SQLite 3 • Ingestion: Open-Meteo & Historical CWC / IMD Benchmarks</span>
+        </div>
+    </footer>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Chart.js for visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Global Alert Counter Script -->
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            fetch("/api/alerts")
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success && d.alerts) {
+                        const unack = d.alerts.filter(a => !a.is_acknowledged);
+                        const badge = document.getElementById("nav-alerts-badge");
+                        if (badge && unack.length > 0) {
+                            badge.textContent = unack.length;
+                            badge.style.display = "inline-block";
+                        }
+                    }
+                })
+                .catch(e => console.log("Alerts query error:", e));
+        });
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

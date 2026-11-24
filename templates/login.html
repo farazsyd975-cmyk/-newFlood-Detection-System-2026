@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="auth-page-container">
+
+    <div class="auth-card card">
+        <div class="auth-header">
+            <span class="auth-icon">🔐</span>
+            <h1 class="auth-title">Account Login</h1>
+            <p class="auth-subtitle">Sign in with your email address to access the system</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages">
+                    {% for category, msg in messages %}
+                        <div class="flash-alert flash-{{ category }}">{{ msg }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('login') }}" class="auth-form">
+            <div class="form-group">
+                <label for="email" class="form-label">Email Address</label>
+                <input type="email" id="email" name="email" class="form-input" 
+                       placeholder="name@example.com" required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" id="password" name="password" class="form-input" 
+                       placeholder="Enter your password" required>
+            </div>
+
+            <div class="auth-actions">
+                <button type="submit" class="btn btn-primary btn-block">
+                    Log In
+                </button>
+            </div>
+        </form>
+
+        <!-- Demo Account Auto-Fill -->
+        <div class="demo-creds-box">
+            <span class="demo-creds-title">Demo Account:</span>
+            <div class="demo-cred-item">
+                <span class="d-val font-mono">user@floodsystem.com / password123</span>
+                <button type="button" class="btn-fill-demo" onclick="fillCreds('user@floodsystem.com', 'password123')">
+                    Auto-fill
+                </button>
+            </div>
+        </div>
+
+        <div class="auth-footer-links">
+            <span>Don't have an account? <a href="{{ url_for('register') }}">Sign up</a></span>
+            <span>•</span>
+            <a href="{{ url_for('index') }}">Back to Flood Map</a>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function fillCreds(email, password) {
+        document.getElementById('email').value = email;
+        document.getElementById('password').value = password;
+    }
+</script>
+{% endblock %}

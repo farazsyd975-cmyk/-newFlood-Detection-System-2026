@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Prediction History Log - SQLite Records{% endblock %}
+
+{% block content %}
+<div class="history-page-container">
+
+    <div class="page-header card">
+        <div class="header-content">
+            <span class="page-tag">LOCAL SQLITE PERSISTENCE</span>
+            <h1 class="page-title">Historical Flood Risk Predictions</h1>
+            <p class="page-description">
+                Persistent database log of all automated environmental risk evaluations and manual simulation assessments.
+            </p>
+        </div>
+        <div class="header-badges">
+            <div class="stat-pill">
+                <span class="s-val text-primary">{{ records|length }}</span>
+                <span class="s-label">Logged Predictions</span>
+            </div>
+            <div class="stat-pill">
+                <span class="s-val text-success">SQLite 3</span>
+                <span class="s-label">Storage Engine</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter & Table Card -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <div class="card-title-group">
+                <h2 class="card-title">Prediction Records (Newest First)</h2>
+                <p class="card-subtitle">Stored in <code>database/flood.db</code></p>
+            </div>
+            <div class="filter-group">
+                <input type="text" id="history-search" class="form-input form-sm" placeholder="Filter by city name...">
+                <select id="history-risk-filter" class="form-select form-sm">
+                    <option value="all">All Risk Levels</option>
+                    <option value="Low">Low Risk</option>
+                    <option value="Moderate">Moderate Risk</option>
+                    <option value="High">High Risk</option>
+                    <option value="Severe">Severe Risk</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-responsive">
+            <table class="data-table history-table" id="history-data-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Timestamp</th>
+                        <th>Location</th>
+                        <th>Rainfall</th>
+                        <th>River Level</th>
+                        <th>Soil Moisture</th>
+                        <th>Drainage</th>
+                        <th>7d Prior Rain</th>
+                        <th>Risk Assessment</th>
+                        <th>Probable Cause</th>
+                        <th>Confidence</th>
+                        <th>Data Source</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if records %}
+                        {% for r in records %}
+                        <tr class="history-row" data-city="{{ r.location_name }}" data-risk="{{ r.risk_label }}">
+                            <td class="font-mono text-muted">#{{ r.id }}</td>
+                            <td class="font-mono text-sm">{{ r.created_at }}</td>
+                            <td><strong>{{ r.location_name }}</strong></td>
+                            <td class="font-mono">{{ r.rainfall_mm }} mm</td>
+                            <td class="font-mono">{{ r.river_water_level_m }} m</td>
+                            <td class="font-mono">{{ r.soil_moisture_pct }}%</td>
+                            <td class="font-mono">{{ r.drainage_capacity_pct }}%</td>
+                            <td class="font-mono">{{ r.prev_rainfall_7d_mm }} mm</td>
+                            <td>
+                                {% if r.risk_label == 'Low' %}
+                                    <span class="badge badge-low">Low</span>
+                                {% elif r.risk_label == 'Moderate' %}
+                                    <span class="badge badge-mod">Moderate</span>
+                                {% elif r.risk_label == 'High' %}
+                                    <span class="badge badge-high">High</span>
+                                {% else %}
+                                    <span class="badge badge-sev">Severe</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="cause-tag-table">{{ r.probable_cause or 'Normal Drainage' }}</span>
+                            </td>
+                            <td class="font-mono font-bold">{{ r.confidence_pct }}%</td>
+                            <td>
+                                <span class="source-tag font-mono">{{ r.data_source }}</span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="10" class="text-center py-4 text-muted">
+                                No prediction records found in the database. Run predictions from the Interactive Map to populate this log.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Simple client-side search and filtering for historical records
+    document.addEventListener("DOMContentLoaded", function() {
+        const searchInput = document.getElementById("history-search");
+        const filterSelect = document.getElementById("history-risk-filter");
+        const rows = document.querySelectorAll(".history-row");
+
+        function filterRows() {
+            const query = searchInput.value.toLowerCase().trim();
+            const selectedRisk = filterSelect.value;
+
+            rows.forEach(row => {
+                const city = (row.getAttribute("data-city") || "").toLowerCase();
+                const risk = row.getAttribute("data-risk") || "";
+
+                const matchesQuery = city.includes(query);
+                const matchesRisk = (selectedRisk === "all" || risk === selectedRisk);
+
+                if (matchesQuery && matchesRisk) {
+                    row.style.display = "";
+                } else {
+                    row.style.display = "none";
+                }
+            });
+        }
+
+        if (searchInput) searchInput.addEventListener("input", filterRows);
+        if (filterSelect) filterSelect.addEventListener("change", filterRows);
+    });
+</script>
+{% endblock %}

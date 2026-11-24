@@ -1,0 +1,193 @@
+{
+  "model_type": "Random Forest Classifier (130 Trees with StandardScaler)",
+  "baseline_model": "Decision Tree Classifier",
+  "cause_model_type": "Random Forest Cause-Aware Classifier (100 Trees)",
+  "dataset_total_samples": 2100,
+  "train_samples": 1680,
+  "test_samples": 420,
+  "features": [
+    "rainfall_mm",
+    "temp_c",
+    "humidity_pct",
+    "river_water_level_m",
+    "soil_moisture_pct",
+    "prev_rainfall_7d_mm",
+    "elevation_m",
+    "distance_to_river_km",
+    "drainage_capacity_pct"
+  ],
+  "classes": {
+    "0": "Low",
+    "1": "Moderate",
+    "2": "High",
+    "3": "Severe"
+  },
+  "cause_classes": {
+    "0": "None / Normal Drainage",
+    "1": "Rainfall-Driven Flooding",
+    "2": "Drainage-Driven Flooding",
+    "3": "River Overflow",
+    "4": "Combined Flood Risk"
+  },
+  "metrics": {
+    "accuracy": 0.9405,
+    "precision_macro": 0.9342,
+    "precision_weighted": 0.9409,
+    "recall_macro": 0.8945,
+    "recall_weighted": 0.9405,
+    "f1_macro": 0.9123,
+    "f1_weighted": 0.9399,
+    "cv_accuracy_mean": 0.9173,
+    "cv_accuracy_std": 0.0107,
+    "decision_tree_accuracy": 0.9214,
+    "cause_accuracy": 0.969
+  },
+  "confusion_matrix": [
+    [
+      222,
+      6,
+      0,
+      0
+    ],
+    [
+      8,
+      110,
+      0,
+      0
+    ],
+    [
+      0,
+      8,
+      23,
+      0
+    ],
+    [
+      0,
+      0,
+      3,
+      40
+    ]
+  ],
+  "feature_importances": {
+    "rainfall_mm": 0.4126,
+    "prev_rainfall_7d_mm": 0.1629,
+    "soil_moisture_pct": 0.1423,
+    "humidity_pct": 0.094,
+    "river_water_level_m": 0.0836,
+    "drainage_capacity_pct": 0.0584,
+    "temp_c": 0.016,
+    "elevation_m": 0.0159,
+    "distance_to_river_km": 0.0143
+  },
+  "classification_report": {
+    "Low": {
+      "precision": 0.9652173913043478,
+      "recall": 0.9736842105263158,
+      "f1-score": 0.9694323144104804,
+      "support": 228.0
+    },
+    "Moderate": {
+      "precision": 0.8870967741935484,
+      "recall": 0.9322033898305084,
+      "f1-score": 0.9090909090909091,
+      "support": 118.0
+    },
+    "High": {
+      "precision": 0.8846153846153846,
+      "recall": 0.7419354838709677,
+      "f1-score": 0.8070175438596491,
+      "support": 31.0
+    },
+    "Severe": {
+      "precision": 1.0,
+      "recall": 0.9302325581395349,
+      "f1-score": 0.963855421686747,
+      "support": 43.0
+    },
+    "accuracy": 0.9404761904761905,
+    "macro avg": {
+      "precision": 0.9342323875283202,
+      "recall": 0.8945139105918316,
+      "f1-score": 0.9123490472619463,
+      "support": 420.0
+    },
+    "weighted avg": {
+      "precision": 0.9408810987983498,
+      "recall": 0.9404761904761905,
+      "f1-score": 0.9399205284535618,
+      "support": 420.0
+    }
+  },
+  "locations": {
+    "Jalandhar": {
+      "lat": 31.326,
+      "lon": 75.5762,
+      "elevation_m": 228.0,
+      "nearest_river": "Kali Bein / Sutlej tributary",
+      "avg_river_dist_km": 12.0,
+      "normal_river_level_m": 2.2,
+      "danger_river_level_m": 4.5,
+      "base_drainage_capacity_pct": 65.0
+    },
+    "Phagwara": {
+      "lat": 31.224,
+      "lon": 75.7708,
+      "elevation_m": 234.0,
+      "nearest_river": "East Bein drainage basin",
+      "avg_river_dist_km": 8.5,
+      "normal_river_level_m": 2.0,
+      "danger_river_level_m": 4.2,
+      "base_drainage_capacity_pct": 55.0
+    },
+    "Amritsar": {
+      "lat": 31.634,
+      "lon": 74.8723,
+      "elevation_m": 234.0,
+      "nearest_river": "Ravi River / Sakki Nullah",
+      "avg_river_dist_km": 15.0,
+      "normal_river_level_m": 2.4,
+      "danger_river_level_m": 4.8,
+      "base_drainage_capacity_pct": 70.0
+    },
+    "Ludhiana": {
+      "lat": 30.901,
+      "lon": 75.8573,
+      "elevation_m": 244.0,
+      "nearest_river": "Sutlej River & Buddha Nullah",
+      "avg_river_dist_km": 6.0,
+      "normal_river_level_m": 2.6,
+      "danger_river_level_m": 5.0,
+      "base_drainage_capacity_pct": 45.0
+    },
+    "Kapurthala": {
+      "lat": 31.38,
+      "lon": 75.381,
+      "elevation_m": 225.0,
+      "nearest_river": "Beas River & Harike Wetland",
+      "avg_river_dist_km": 7.0,
+      "normal_river_level_m": 2.5,
+      "danger_river_level_m": 4.4,
+      "base_drainage_capacity_pct": 50.0
+    },
+    "Hoshiarpur": {
+      "lat": 31.5143,
+      "lon": 75.9115,
+      "elevation_m": 296.0,
+      "nearest_river": "Shivalik Seasonal Torrents (Choes)",
+      "avg_river_dist_km": 4.0,
+      "normal_river_level_m": 1.5,
+      "danger_river_level_m": 3.8,
+      "base_drainage_capacity_pct": 60.0
+    },
+    "Nawanshahr": {
+      "lat": 31.124,
+      "lon": 76.116,
+      "elevation_m": 250.0,
+      "nearest_river": "Sutlej River floodplain",
+      "avg_river_dist_km": 5.5,
+      "normal_river_level_m": 2.3,
+      "danger_river_level_m": 4.7,
+      "base_drainage_capacity_pct": 58.0
+    }
+  }
+}

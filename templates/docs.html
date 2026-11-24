@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}System Architecture & Technical Documentation{% endblock %}
+
+{% block content %}
+<div class="docs-page-container">
+
+    <!-- Page Header -->
+    <div class="page-header card">
+        <div class="header-content">
+            <span class="page-tag">TECHNICAL ARCHITECTURE & SPECIFICATION</span>
+            <h1 class="page-title">Flood Intelligence Platform - System Documentation</h1>
+            <p class="page-description">
+                Comprehensive technical overview of hydrological modeling, dual-engine ML architecture, cause-aware diagnostic logic, and response priority systems.
+            </p>
+        </div>
+        <div class="header-badges">
+            <div class="stat-pill">
+                <span class="s-val text-primary">Flask + Scikit-Learn</span>
+                <span class="s-label">Core Tech Stack</span>
+            </div>
+            <div class="stat-pill">
+                <span class="s-val text-success">Render Native</span>
+                <span class="s-label">Deployment Target</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 1: Problem Statement & Proposed Solution -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">1. Problem Statement & Proposed Solution</h2>
+                <p class="card-subtitle">Addressing complex hydrological vulnerabilities in Punjab river basins</p>
+            </div>
+        </div>
+        <div class="card-body prose">
+            <p>
+                Punjab, the fertile agrarian heartland of northwestern India, is traversed by three major Himalayan rivers: the <strong>Sutlej</strong>, <strong>Beas</strong>, and <strong>Ravi</strong>. During the southwest monsoon season (July to September), peak precipitation in the upper Shivalik and Himachal Pradesh catchments leads to massive reservoir releases from the Bhakra Dam, Pong Dam, and Ranjit Sagar Dam into Punjab's river corridors.
+            </p>
+            <p>
+                Traditional flood monitoring relies heavily on isolated physical river gauge readings. This single-variable approach frequently fails because localized floods in Punjab occur due to multiple distinct mechanisms:
+            </p>
+            <ul>
+                <li><strong>Cloudburst Inundation:</strong> Extreme 24h rainfall overpowering soil absorption even when rivers are safe.</li>
+                <li><strong>Urban Storm Drainage Choking:</strong> Industrial channels and choked municipal drains (e.g. Buddha Nullah in Ludhiana) causing catastrophic backflow.</li>
+                <li><strong>River Embankment Overtopping:</strong> Dam releases and Himalayan surges overtopping dykes in low-lying confluence areas (e.g. Kapurthala Mand area).</li>
+                <li><strong>Compound Catastrophes:</strong> Simultaneous heavy downpours, saturated soil, and river surges (e.g. July 2023 Punjab floods).</li>
+            </ul>
+            <p>
+                <strong>Proposed Solution:</strong> This platform implements a localized, explainable dual-engine machine learning system that couples multivariate real-time atmospheric telemetry with topographical features and drainage congestion indices to deliver <strong>predictive flood hazard ratings</strong> alongside <strong>cause-aware diagnostic classification</strong> and <strong>automated response priority planning</strong>.
+            </p>
+        </div>
+    </div>
+
+    <!-- Section 2: Architecture & Data Flow -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">2. System Architecture & Data Flow</h2>
+                <p class="card-subtitle">Modular, resilient, and non-blocking pipeline</p>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="arch-flow-grid">
+                <div class="arch-flow-step">
+                    <span class="step-badge">1. Telemetry Ingestion</span>
+                    <h4>Open-Meteo REST API</h4>
+                    <p>Fetches real-time temperature, humidity, precipitation, and soil moisture for coordinates with a 3s timeout. Falls back automatically to calibrated district seasonal baselines if offline.</p>
+                </div>
+                <div class="arch-flow-step">
+                    <span class="step-badge">2. Preprocessing & Imputation</span>
+                    <h4>StandardScaler Pipeline</h4>
+                    <p>Sanitizes raw telemetry, validates physical boundaries (soil moisture: 5–100%), and normalizes the 9-dimensional feature vector.</p>
+                </div>
+                <div class="arch-flow-step">
+                    <span class="step-badge">3. Dual ML Inference</span>
+                    <h4>Random Forest Classifiers</h4>
+                    <p>Executes parallel inference: <code>flood_model.pkl</code> (130 trees, 4 risk tiers) and <code>cause_model.pkl</code> (100 trees, 5 probable causes) with full class probabilities.</p>
+                </div>
+                <div class="arch-flow-step">
+                    <span class="step-badge">4. XAI & Response Planning</span>
+                    <h4>Explainability & Rules</h4>
+                    <p>Attributes feature contributions via Gini importance, performs sensitivity What-If analysis, and assigns emergency priorities and resource allocation directives.</p>
+                </div>
+                <div class="arch-flow-step">
+                    <span class="step-badge">5. Spatial UI & Audit</span>
+                    <h4>Leaflet.js & SQLite</h4>
+                    <p>Renders interactive OpenStreetMap with color-coded risk halos, updates charts with Chart.js, logs alerts, and stores records in SQLite.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section 3: Hydrological Modeling & SCS Curve Physics -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">3. Hydrological Modeling & Physics Formulation</h2>
+                <p class="card-subtitle">USDA SCS Runoff Curve Number & Stage-Discharge formulations</p>
+            </div>
+        </div>
+        <div class="card-body prose">
+            <p>
+                The synthetic training instances are generated using an empirical hydrologic runoff formulation grounded in the <strong>USDA SCS Runoff Curve Number (CN)</strong> method and Central Water Commission (CWC) stage-discharge relations:
+            </p>
+            <div class="formula-box">
+                <code>S = 0.35 × (R_24 × [M_soil / 100]) + 0.15 × (0.22 × R_7d) + 0.15 × (0.35 × [100 - C_drain]) + 0.25 × ΔH_river + 0.05 × E_topo + 0.05 × D_dist + ε</code>
+            </div>
+            <p>
+                Where:
+            </p>
+            <ul>
+                <li><code>R_24 × (M_soil / 100)</code>: Infiltration excess surface runoff potential.</li>
+                <li><code>0.22 × R_7d</code>: Antecedent soil saturation diminishing ground absorption capacity.</li>
+                <li><code>(100 - C_drain)</code>: Drainage congestion penalty reflecting culvert choking and backflow.</li>
+                <li><code>ΔH_river</code>: River surcharge pressure relative to local danger stage.</li>
+                <li><code>E_topo, D_dist</code>: Topographical depression pooling and river channel proximity.</li>
+                <li><code>ε ~ N(0, 3.0)</code>: Sensor measurement stochastic noise.</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Section 4: Technologies Used -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">4. Technologies & Frameworks</h2>
+                <p class="card-subtitle">Production-grade open-source software stack</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Layer</th>
+                        <th>Technology</th>
+                        <th>Version</th>
+                        <th>Core Functionality</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Backend Framework</strong></td>
+                        <td>Python Flask</td>
+                        <td>3.1.3</td>
+                        <td>REST routing, session state, API endpoints, Jinja2 templating</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Machine Learning</strong></td>
+                        <td>Scikit-Learn</td>
+                        <td>1.9.1</td>
+                        <td>Random Forest Classifier pipelines, StandardScaler, Cross-validation</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Data Analysis</strong></td>
+                        <td>Pandas & NumPy</td>
+                        <td>3.1.1 / 2.5.4</td>
+                        <td>Feature engineering, CSV batch manipulation, matrix math</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Mapping & GIS</strong></td>
+                        <td>Leaflet.js + OSM</td>
+                        <td>1.9.4</td>
+                        <td>Interactive cartography, custom circular pulsing pins, geospatial zoom</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Visualizations</strong></td>
+                        <td>Chart.js</td>
+                        <td>4.4.1</td>
+                        <td>Interactive doughnut, grouped bar, and historical trend charts</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Embedded Storage</strong></td>
+                        <td>SQLite 3</td>
+                        <td>Native</td>
+                        <td>Audit trail for predictions, early warning alerts, and user accounts</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Cloud Deployment</strong></td>
+                        <td>Render / Gunicorn</td>
+                        <td>23.0.0</td>
+                        <td>WSGI production web server, automated GitHub CI/CD container hosting</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Section 5: Limitations & Future Scope -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">5. Limitations & Future Scope</h2>
+                <p class="card-subtitle">Scientific boundaries and technological expansion roadmap</p>
+            </div>
+        </div>
+        <div class="card-body prose">
+            <div class="two-col-grid">
+                <div>
+                    <h4 class="text-primary font-bold">Current System Limitations:</h4>
+                    <ul>
+                        <li><strong>Ephemeral Container Storage:</strong> On Render free tier, SQLite database files reset upon container restarts. Enterprise deployments should attach a hosted PostgreSQL database.</li>
+                        <li><strong>Synthetic Hydrologic Training:</strong> While calibrated against authentic CWC/IMD historical monsoon flood thresholds, sensor training data uses USDA SCS simulation formulas due to restricted public access to raw continuous gauge telemetry.</li>
+                        <li><strong>Point-Based Forecasts:</strong> Open-Meteo forecasts reflect geographic centroids for district headquarters rather than hyper-localized micro-catchments.</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-success font-bold">Future Engineering Scope:</h4>
+                    <ul>
+                        <li><strong>Satellite SAR Inundation Mapping:</strong> Integration of Sentinel-1 Synthetic Aperture Radar (SAR) imagery to map active water inundation extents during cloud cover.</li>
+                        <li><strong>IoT River Gauge Integration:</strong> Direct MQTT/LoRaWAN sensor feeds from ultrasonic river depth sensors on Sutlej and Beas bridges.</li>
+                        <li><strong>Digital Elevation Model (DEM) Hydrological Routing:</strong> Processing 30m SRTM DEM data to simulate overland flow velocity vectors.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

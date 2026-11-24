@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Early Warning & Alert Center{% endblock %}
+
+{% block content %}
+<div class="alerts-page-container">
+
+    <div class="page-header card">
+        <div class="header-content">
+            <span class="page-tag">DISASTER MANAGEMENT PROTOCOLS</span>
+            <h1 class="page-title">Early Warning & Flood Alert Center</h1>
+            <p class="page-description">
+                Real-time incident notifications, risk escalation logs, and priority public safety advisories for Punjab districts.
+            </p>
+        </div>
+        <div class="header-badges">
+            <div class="stat-pill">
+                <span class="s-val text-danger" id="unack-count">{{ unacknowledged_count }}</span>
+                <span class="s-label">Unacknowledged Warnings</span>
+            </div>
+            <div class="stat-pill">
+                <span class="s-val text-primary">{{ alerts|length }}</span>
+                <span class="s-label">Total Alert Log</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Management Toolbar -->
+    <div class="alerts-toolbar card mt-4">
+        <div class="toolbar-left">
+            <span class="toolbar-title">Active Emergency Incident Stream</span>
+            <span class="toolbar-hint">High and Severe risk thresholds automatically log priority alerts to SQLite.</span>
+        </div>
+        <div class="toolbar-right">
+            <button id="btn-ack-all" class="btn btn-outline btn-sm">
+                ✓ Acknowledge All Active Alerts
+            </button>
+        </div>
+    </div>
+
+    <!-- Alerts Feed -->
+    <div class="alerts-feed mt-4">
+        {% if alerts %}
+            {% for a in alerts %}
+            <div class="alert-card card {% if not a.is_acknowledged %}unread{% endif %} {% if a.alert_level == 'Severe' %}alert-border-severe{% else %}alert-border-high{% endif %}" id="alert-card-{{ a.id }}">
+                <div class="alert-top">
+                    <div class="alert-badge-wrap">
+                        {% if a.is_escalation %}
+                            <span class="badge badge-escalation">⚡ RISK ESCALATED</span>
+                        {% endif %}
+                        {% if a.alert_level == 'Severe' %}
+                            <span class="badge badge-sev">🚨 SEVERE FLOOD EMERGENCY</span>
+                        {% else %}
+                            <span class="badge badge-high">⚠️ HIGH HAZARD WARNING</span>
+                        {% endif %}
+                        <span class="alert-location">📍 <strong>{{ a.location_name }}</strong></span>
+                        <span class="alert-cause-tag">{{ a.probable_cause }}</span>
+                    </div>
+                    <div class="alert-meta">
+                        <span class="font-mono text-muted text-sm">{{ a.created_at }}</span>
+                        {% if not a.is_acknowledged %}
+                            <button class="btn-ack btn btn-outline btn-sm" onclick="acknowledgeAlert({{ a.id }})">
+                                Mark Acknowledged
+                            </button>
+                        {% else %}
+                            <span class="ack-status font-mono">✓ Acknowledged</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="alert-body">
+                    <h3 class="alert-headline">{{ a.title }}</h3>
+                    <p class="alert-msg">{{ a.message }}</p>
+                </div>
+
+                <div class="alert-footer">
+                    <a href="{{ url_for('response_planning', city=a.location_name) }}" class="alert-action-link">
+                        🛡️ Open Emergency Action Directives for {{ a.location_name }} ➔
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="card empty-alerts-card">
+                <div class="empty-icon">🛡️</div>
+                <h3>No Active Emergency Alerts</h3>
+                <p>All monitored Punjab river basins and drainage channels are currently operating within safe hydrological limits.</p>
+                <a href="{{ url_for('index') }}" class="btn btn-primary btn-sm mt-4">Go to Interactive Flood Map</a>
+            </div>
+        {% endif %}
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function acknowledgeAlert(alertId) {
+        fetch(`/api/alerts/acknowledge/${alertId}`, { method: 'POST' })
+            .then(r => r.json())
+            .then(d => {
+                if (d.success) {
+                    const card = document.getElementById(`alert-card-${alertId}`);
+                    if (card) {
+                        card.classList.remove('unread');
+                        const meta = card.querySelector('.alert-meta');
+                        meta.innerHTML = `<span class="ack-status font-mono">✓ Acknowledged</span>`;
+                    }
+                    const countElem = document.getElementById('unack-count');
+                    if (countElem) {
+                        let c = parseInt(countElem.textContent) || 0;
+                        countElem.textContent = Math.max(0, c - 1);
+                    }
+                }
+            });
+    }
+
+    const btnAckAll = document.getElementById('btn-ack-all');
+    if (btnAckAll) {
+        btnAckAll.addEventListener('click', function() {
+            fetch('/api/alerts/acknowledge-all', { method: 'POST' })
+                .then(r => r.json())
+                .then(d => {
+                    if (d.success) {
+                        location.reload();
+                    }
+                });
+        });
+    }
+</script>
+{% endblock %}

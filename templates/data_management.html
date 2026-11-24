@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Data Management & Export Portal{% endblock %}
+
+{% block content %}
+<div class="data-page-container">
+
+    <!-- Page Header -->
+    <div class="page-header card">
+        <div class="header-content">
+            <span class="page-tag">DATA ENGINEERING & INGESTION</span>
+            <h1 class="page-title">Data Management & Prediction Export Portal</h1>
+            <p class="page-description">
+                Upload custom environmental telemetry CSV datasets for batch model validation, impute missing values, and export historical audits.
+            </p>
+        </div>
+        <div class="header-badges" style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <select id="export-station-select" class="form-select form-sm" style="width: auto;">
+                    <option value="Jalandhar">Jalandhar</option>
+                    <option value="Phagwara">Phagwara</option>
+                    <option value="Amritsar">Amritsar</option>
+                    <option value="Ludhiana">Ludhiana</option>
+                    <option value="Kapurthala">Kapurthala</option>
+                    <option value="Hoshiarpur">Hoshiarpur</option>
+                    <option value="Nawanshahr">Nawanshahr</option>
+                </select>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-export-station-json">
+                    📋 Export Station Report (JSON)
+                </button>
+            </div>
+            <a href="{{ url_for('api_export_predictions_csv') }}" class="btn btn-primary btn-sm">
+                ⬇️ Export Full Audit History (CSV)
+            </a>
+        </div>
+    </div>
+
+    <!-- Upload & Ingestion Section -->
+    <div class="two-col-grid mt-4">
+        
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Upload Environmental CSV Dataset</h2>
+                    <p class="card-subtitle">Upload a batch CSV file for automated ML evaluation</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <form id="csv-upload-form" enctype="multipart/form-data" class="upload-form">
+                    <div class="file-drop-area" id="drop-area">
+                        <span class="upload-icon">📄</span>
+                        <span class="upload-prompt">Click to browse or drag and drop your CSV dataset</span>
+                        <input type="file" id="csv-file-input" name="file" accept=".csv" class="file-input" required>
+                    </div>
+
+                    <div class="schema-hint-box mt-3">
+                        <span class="hint-title">Expected CSV Column Headers:</span>
+                        <code class="schema-code">location, rainfall_mm, river_water_level_m, soil_moisture_pct, prev_rainfall_7d_mm, drainage_capacity_pct, temp_c, humidity_pct</code>
+                    </div>
+
+                    <div class="mt-3">
+                        <button type="submit" id="btn-submit-upload" class="btn btn-primary btn-block">
+                            Validate & Process Batch Inference
+                        </button>
+                    </div>
+                </form>
+
+                <div id="upload-status" class="upload-status-box mt-3" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Processing & Export Directives -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Preprocessing & Validation Rules</h2>
+                    <p class="card-subtitle">Automated data cleansing & missing-value handling</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="rule-list">
+                    <div class="rule-item">
+                        <span class="rule-num">1</span>
+                        <div class="rule-text">
+                            <strong>Missing Value Imputation:</strong>
+                            <p>Missing atmospheric fields are automatically imputed using baseline seasonal medians for that specific Punjab district.</p>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <span class="rule-num">2</span>
+                        <div class="rule-text">
+                            <strong>Feature Bounds Sanitization:</strong>
+                            <p>Inputs are clipped to physically plausible hydrologic boundaries (e.g. soil moisture: 5–100%, humidity: 10–100%).</p>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <span class="rule-num">3</span>
+                        <div class="rule-text">
+                            <strong>StandardScaler Normalization:</strong>
+                            <p>Raw parameters pass through the serialized StandardScaler inside the Random Forest pipeline before scoring.</p>
+                        </div>
+                    </div>
+                    <div class="rule-item">
+                        <span class="rule-num">4</span>
+                        <div class="rule-text">
+                            <strong>Audit Trail Persistence:</strong>
+                            <p>Every processed prediction is indexed in SQLite (<code>database/flood.db</code>) with timestamp and telemetry tags.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Batch Upload Preview Table (Dynamically Populated) -->
+    <div id="batch-preview-container" class="card mt-4" style="display: none;">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">Batch Processing Results Preview</h2>
+                <p class="card-subtitle" id="batch-preview-subtitle">Sample rows evaluated from uploaded dataset</p>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="data-table" id="batch-preview-table">
+                <thead>
+                    <tr>
+                        <th>Row #</th>
+                        <th>Location</th>
+                        <th>Rainfall</th>
+                        <th>River Level</th>
+                        <th>Predicted Risk</th>
+                        <th>Identified Probable Cause</th>
+                        <th>Confidence</th>
+                    </tr>
+                </thead>
+                <tbody id="batch-preview-tbody"></tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const form = document.getElementById("csv-upload-form");
+    const statusBox = document.getElementById("upload-status");
+    const previewContainer = document.getElementById("batch-preview-container");
+    const previewTbody = document.getElementById("batch-preview-tbody");
+    const previewSubtitle = document.getElementById("batch-preview-subtitle");
+
+    // Export Station Report JSON handler
+    const btnExportStation = document.getElementById("btn-export-station-json");
+    const selectStation = document.getElementById("export-station-select");
+    if (btnExportStation && selectStation) {
+        btnExportStation.addEventListener("click", function() {
+            const loc = selectStation.value;
+            window.open(`/api/export/station-report/${encodeURIComponent(loc)}`, '_blank');
+        });
+    }
+
+    if (form) {
+        form.addEventListener("submit", function(e) {
+            e.preventDefault();
+            const fileInput = document.getElementById("csv-file-input");
+            if (!fileInput.files.length) return;
+
+            const formData = new FormData();
+            formData.append("file", fileInput.files[0]);
+
+            statusBox.style.display = "block";
+            statusBox.className = "upload-status-box info";
+            statusBox.textContent = "Processing and validating CSV dataset...";
+
+            fetch("/api/upload-csv", {
+                method: "POST",
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    statusBox.className = "upload-status-box success";
+                    statusBox.textContent = `✓ ${data.message}`;
+
+                    if (data.preview_samples && data.preview_samples.length > 0) {
+                        previewTbody.innerHTML = "";
+                        data.preview_samples.forEach(s => {
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `
+                                <td class="font-mono text-muted">#${s.row}</td>
+                                <td><strong>${s.location}</strong></td>
+                                <td class="font-mono">${s.rainfall_mm} mm</td>
+                                <td class="font-mono">${s.river_water_level_m} m</td>
+                                <td><span class="badge ${s.risk_label === 'Severe' ? 'badge-sev' : (s.risk_label === 'High' ? 'badge-high' : (s.risk_label === 'Moderate' ? 'badge-mod' : 'badge-low'))}">${s.risk_label}</span></td>
+                                <td><span class="cause-tag-table">${s.probable_cause}</span></td>
+                                <td class="font-mono font-bold">${s.confidence}%</td>
+                            `;
+                            previewTbody.appendChild(tr);
+                        });
+                        previewSubtitle.textContent = `Processed ${data.total_rows_processed} total rows. Showing initial preview:`;
+                        previewContainer.style.display = "block";
+                    }
+                } else {
+                    statusBox.className = "upload-status-box error";
+                    statusBox.textContent = `❌ ${data.error || 'Failed to process CSV'}`;
+                }
+            })
+            .catch(err => {
+                statusBox.className = "upload-status-box error";
+                statusBox.textContent = `❌ Upload error: ${err.message}`;
+            });
+        });
+    }
+</script>
+{% endblock %}

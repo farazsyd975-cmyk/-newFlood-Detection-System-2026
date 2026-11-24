@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Cause-Aware Flood Response & Priority Planning{% endblock %}
+
+{% block content %}
+<div class="response-page-container">
+
+    <!-- Page Header with City Selector -->
+    <div class="page-header card">
+        <div class="header-content">
+            <span class="page-tag">OPERATIONAL CONTINGENCY PROTOCOLS</span>
+            <h1 class="page-title">Cause-Aware Emergency Response & Resource Planning</h1>
+            <p class="page-description">
+                Tailored disaster management directives derived from multivariate ML flood risk and diagnostic cause identification.
+            </p>
+        </div>
+        <div class="header-badges">
+            <form method="GET" action="{{ url_for('response_planning') }}" class="city-selector-form">
+                <label for="city-select" class="form-label text-sm">Select Station:</label>
+                <select id="city-select" name="city" class="form-select form-sm" onchange="this.form.submit()">
+                    {% for loc in locations %}
+                    <option value="{{ loc.name }}" {% if loc.name == selected_city %}selected{% endif %}>
+                        {{ loc.name }} ({{ loc.district }})
+                    </option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+    </div>
+
+    <!-- Top Response Stance & Priority Callout -->
+    <div class="card mt-4 priority-hero {{ assessment.response_plan.priority_badge }}">
+        <div class="hero-top">
+            <div>
+                <span class="hero-tag">OPERATIONAL COMMAND DIRECTIVE</span>
+                <h2 class="hero-title">{{ assessment.response_plan.emergency_priority }}</h2>
+            </div>
+            <div class="hero-badge-wrap">
+                <span class="badge {{ assessment.prediction.badge_class }}">{{ assessment.prediction.risk_label }} Risk ({{ assessment.prediction.confidence_pct }}%)</span>
+                <span class="badge {{ assessment.probable_cause.badge_class }}">{{ assessment.probable_cause.title }}</span>
+            </div>
+        </div>
+        <p class="hero-stance">{{ assessment.response_plan.overall_stance }}</p>
+    </div>
+
+    <!-- Two Column Directives Grid -->
+    <div class="two-col-grid mt-4">
+        
+        <!-- Left: Evacuation & Drainage Directives -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Evacuation & Infiltration Directives</h2>
+                    <p class="card-subtitle">Immediate public safety protocols based on {{ assessment.probable_cause.title }}</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="directive-section">
+                    <span class="d-title">🚨 Evacuation Protocol Status:</span>
+                    <p class="d-highlight font-bold">{{ assessment.response_plan.evacuation_status }}</p>
+                    <span class="d-subtitle mt-2">Vulnerable Sectors Requiring Immediate Monitoring:</span>
+                    <ul class="d-list">
+                        {% for zone in assessment.response_plan.evacuation_zones %}
+                        <li>{{ zone }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+                <div class="directive-section mt-4">
+                    <span class="d-title">🚧 Drainage & Hydraulic Control Directives:</span>
+                    <p class="d-highlight font-bold">{{ assessment.response_plan.drainage_priority }}</p>
+                    <ul class="d-list">
+                        {% for act in assessment.response_plan.drainage_actions %}
+                        <li>{{ act }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right: Resource Allocation Matrix -->
+        <div class="card">
+            <div class="card-header">
+                <div>
+                    <h2 class="card-title">Emergency Resource Allocation Matrix</h2>
+                    <p class="card-subtitle">Standardized equipment and personnel deployment scale</p>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="resource-grid">
+                    <div class="res-item">
+                        <span class="res-icon">🚤</span>
+                        <div class="res-text">
+                            <span class="res-name">NDRF / SDRF Deployment:</span>
+                            <span class="res-val">{{ assessment.response_plan.resources.ndrf_sdrf_teams }}</span>
+                        </div>
+                    </div>
+                    <div class="res-item">
+                        <span class="res-icon">⚙️</span>
+                        <div class="res-text">
+                            <span class="res-name">Heavy De-watering Pumps:</span>
+                            <span class="res-val">{{ assessment.response_plan.resources.dewatering_pumps }}</span>
+                        </div>
+                    </div>
+                    <div class="res-item">
+                        <span class="res-icon">🧱</span>
+                        <div class="res-text">
+                            <span class="res-name">Sandbag Embankment Reserve:</span>
+                            <span class="res-val">{{ assessment.response_plan.resources.sandbag_reserve }}</span>
+                        </div>
+                    </div>
+                    <div class="res-item">
+                        <span class="res-icon">🏫</span>
+                        <div class="res-text">
+                            <span class="res-name">Designated Relief Shelters:</span>
+                            <span class="res-val">{{ assessment.response_plan.resources.relief_shelters }}</span>
+                        </div>
+                    </div>
+                    <div class="res-item">
+                        <span class="res-icon">🚑</span>
+                        <div class="res-text">
+                            <span class="res-name">Mobile Public Health Units:</span>
+                            <span class="res-val">{{ assessment.response_plan.resources.medical_units }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Operational Authority Action Checklist -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <div>
+                <h2 class="card-title">District Administration Action Checklist for {{ selected_city }}</h2>
+                <p class="card-subtitle">Transparent rule-based response protocol for field magistrates and irrigation engineers</p>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="checklist-grid">
+                {% for item in assessment.response_plan.action_checklist %}
+                <div class="check-item">
+                    <span class="check-box">☑</span>
+                    <span class="check-text">{{ item }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

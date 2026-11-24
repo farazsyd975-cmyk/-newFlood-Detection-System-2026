@@ -1,0 +1,534 @@
+{% extends "base.html" %}
+
+{% block title %}Interactive Flood Map & Cause-Aware Intelligence{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    
+    <!-- Top System Telemetry Bar -->
+    <section class="telemetry-bar">
+        <div class="telemetry-item">
+            <span class="label">Monitored Region:</span>
+            <span class="value">Punjab, India (7 Key Basins)</span>
+        </div>
+        <div class="telemetry-item">
+            <span class="label">ML Architecture:</span>
+            <span class="value font-mono">Dual Random Forest (Risk + Cause)</span>
+        </div>
+        <div class="telemetry-item">
+            <span class="label">Risk Accuracy / Cause Accuracy:</span>
+            <span class="value text-success font-mono">94.05% / 96.90%</span>
+        </div>
+        <div class="telemetry-item">
+            <span class="label">Data Stream:</span>
+            <span id="global-data-source" class="badge-source">
+                {{ initial_env.data_source }}
+            </span>
+        </div>
+    </section>
+
+    <!-- Emergency Active Alerts Banner (FEATURE 7) -->
+    <div id="emergency-alert-banner" class="emergency-banner" style="display: none;">
+        <div class="emergency-banner-content">
+            <span style="font-size: 20px;">🚨</span>
+            <div>
+                <strong>EARLY WARNING NOTICE:</strong>
+                <span id="emergency-banner-text">Active flood warnings require operational attention.</span>
+            </div>
+        </div>
+        <div class="emergency-banner-actions">
+            <a href="{{ url_for('alerts') }}" class="btn btn-primary btn-sm">Review All Alerts ➔</a>
+            <button type="button" class="btn btn-outline btn-sm" id="btn-dismiss-alert-banner">Dismiss</button>
+        </div>
+    </div>
+
+    <!-- Main Workspace Grid -->
+    <div class="workspace-grid">
+
+        <!-- Left Column: Centerpiece Interactive Map -->
+        <section class="map-section card">
+            <div class="card-header">
+                <div class="card-title-group">
+                    <h2 class="card-title">Interactive Flood Intelligence Map - Punjab</h2>
+                    <p class="card-subtitle">Real-time geospatial risk zoning, river gauge monitoring, and cause-aware telemetry.</p>
+                </div>
+                <div class="map-controls">
+                    <button id="btn-compare-stations" class="btn btn-outline btn-sm" title="Side-by-side comparative matrix of all 7 stations">
+                        ⚡ Compare 7 Stations
+                    </button>
+                    <button id="btn-toggle-hotspots" class="btn btn-outline btn-sm" title="Toggle vulnerable bottleneck zones">
+                        ⚠️ Highlight Hotspots
+                    </button>
+                    <button id="btn-reset-map" class="btn btn-outline btn-sm" title="Reset map to full Punjab view">
+                        Reset View
+                    </button>
+                </div>
+            </div>
+
+            <!-- Leaflet Map Container -->
+            <div id="punjab-map" class="map-wrapper" style="min-height: 520px;"></div>
+
+            <!-- Map Footer with Quick Selector and Legend -->
+            <div class="map-footer">
+                <div class="quick-pills-container">
+                    <span class="pills-label">Quick Select Station:</span>
+                    <div class="pills-list">
+                        {% for loc in locations %}
+                        <button type="button" 
+                                class="station-pill {% if loc.name == default_city %}active{% endif %}"
+                                data-city="{{ loc.name }}"
+                                data-lat="{{ loc.latitude }}"
+                                data-lon="{{ loc.longitude }}">
+                            {{ loc.name }}
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Color Legend with Hotspot Indicator -->
+                <div class="map-legend">
+                    <span class="legend-title">Risk Legend:</span>
+                    <div class="legend-items">
+                        <span class="legend-item"><span class="legend-dot dot-low"></span> Low Risk</span>
+                        <span class="legend-item"><span class="legend-dot dot-mod"></span> Moderate</span>
+                        <span class="legend-item"><span class="legend-dot dot-high"></span> High</span>
+                        <span class="legend-item"><span class="legend-dot dot-sev"></span> Severe</span>
+                        <span class="legend-item"><span class="legend-dot dot-hotspot"></span> Critical Hotspot</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Weather Telemetry & 24h Hourly Forecast Section (FEATURE 4) -->
+            <div class="weather-forecast-section">
+                <div class="forecast-header">
+                    <div>
+                        <h3 class="card-title" style="font-size: 14px;">Live Atmospheric Observations & 3-Day Forecast</h3>
+                        <p class="card-subtitle">Open-Meteo REST API Ingestion • Automatic Fallback to Punjab Historical Baseline</p>
+                    </div>
+                    <span id="forecast-live-indicator" class="badge-source">
+                        {% if initial_env.is_live %}🟢 Live Open-Meteo Telemetry{% else %}🟡 Regional Baseline (Offline Mode){% endif %}
+                    </span>
+                </div>
+
+                <!-- 3-Day Daily Forecast Cards -->
+                <div class="forecast-cards-grid" id="forecast-cards-container">
+                    {% for fc in initial_env.daily_forecast %}
+                    <div class="forecast-card">
+                        <span class="forecast-day">{{ fc.day }}</span>
+                        <span class="forecast-condition">{{ fc.condition }}</span>
+                        <div class="forecast-metrics">
+                            <span>🌡️ {{ fc.temp_min }}°C – {{ fc.temp_max }}°C</span>
+                            <span class="forecast-rain">🌧️ {{ fc.expected_rain_mm }} mm</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- 24-Hour Hourly Rainfall Trend Chart -->
+                <div class="hourly-chart-box">
+                    <div class="hourly-chart-header">
+                        <span class="hourly-chart-title">24-Hour Hourly Precipitation Distribution (mm/hr)</span>
+                        <span class="font-mono text-muted text-sm" id="hourly-station-name">{{ default_city }}</span>
+                    </div>
+                    <div style="position: relative; height: 150px;">
+                        <canvas id="hourlyRainChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right Column: Environmental Telemetry & ML Prediction Card -->
+        <section class="prediction-section">
+            <div class="card prediction-card">
+                
+                <div class="card-header">
+                    <div class="card-title-group">
+                        <h2 class="card-title">Cause-Aware Risk Assessment</h2>
+                        <p class="card-subtitle">Multivariate atmospheric telemetry, hydrology & ML inference</p>
+                    </div>
+                    <span id="station-badge" class="station-tag">
+                        {{ default_city }} ({{ initial_env.elevation_m }}m MSL)
+                    </span>
+                </div>
+
+                <!-- Location Selector Form -->
+                <form id="prediction-form" class="prediction-form">
+                    
+                    <div class="form-row">
+                        <div class="form-group flex-1">
+                            <label for="location-select" class="form-label">Selected District / City</label>
+                            <select id="location-select" name="location_name" class="form-select">
+                                {% for loc in locations %}
+                                <option value="{{ loc.name }}" {% if loc.name == default_city %}selected{% endif %}>
+                                    {{ loc.name }} (Lat: {{ loc.latitude }}, Lon: {{ loc.longitude }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group form-action-align">
+                            <button type="button" id="btn-fetch-live" class="btn btn-secondary btn-sm" title="Fetch latest atmospheric data via Open-Meteo">
+                                🔄 Refresh Live Weather
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Weather Condition & Atmospheric Summary -->
+                    <div class="weather-summary-box">
+                        <div class="w-item">
+                            <span class="w-lbl">Current Sky / Weather:</span>
+                            <span id="weather-condition" class="w-val font-bold">{{ initial_env.weather_condition }}</span>
+                        </div>
+                        <div class="w-item">
+                            <span class="w-lbl">Historical Anomaly:</span>
+                            <span id="historical-anomaly-badge" class="anomaly-pill {{ initial_pred.historical_comparison.badge_class }}">
+                                {{ initial_pred.historical_comparison.deviation_pct }}% vs Normal
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Location Physical Context Callout -->
+                    <div class="geo-callout">
+                        <div class="callout-item">
+                            <span class="c-label">Nearest Drainage / River:</span>
+                            <span id="geo-river" class="c-val">{{ initial_env.nearest_river }}</span>
+                        </div>
+                        <div class="callout-item">
+                            <span class="c-label">Coordinates:</span>
+                            <span id="geo-coords" class="c-val font-mono">{{ initial_env.latitude }}°N, {{ initial_env.longitude }}°E</span>
+                        </div>
+                        <div class="callout-item">
+                            <span class="c-label">Embankment Danger Stage:</span>
+                            <span id="geo-danger-stage" class="c-val font-mono">{{ initial_env.danger_river_level_m }} m</span>
+                        </div>
+                        <div class="callout-item">
+                            <span class="c-label">Vulnerability Profile:</span>
+                            <span id="geo-hotspot-desc" class="c-val text-muted text-sm">{{ initial_pred.hotspot_description }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Environmental Input Parameters Display / Sliders -->
+                    <div class="parameters-header">
+                        <span class="section-title">Environmental Parameters</span>
+                        <button type="button" id="toggle-sim-mode" class="sim-toggle-btn">
+                            ✏️ Tweak Parameters (Simulation Mode)
+                        </button>
+                    </div>
+
+                    <!-- Parameters Grid -->
+                    <div class="params-grid" id="params-container">
+                        
+                        <!-- 1. 24h Rainfall -->
+                        <div class="param-card">
+                            <div class="param-top">
+                                <label for="input-rainfall" class="param-label">24h Rainfall (mm)</label>
+                                <span id="val-rainfall" class="param-val-badge">{{ initial_env.rainfall_mm }} mm</span>
+                            </div>
+                            <input type="range" id="input-rainfall" name="rainfall_mm" 
+                                   min="0" max="250" step="1" 
+                                   value="{{ initial_env.rainfall_mm }}" 
+                                   class="param-range" disabled>
+                            <span class="param-hint">IMD Heavy Rain > 65mm; Torrential > 115mm</span>
+                        </div>
+
+                        <!-- 2. River Water Level -->
+                        <div class="param-card">
+                            <div class="param-top">
+                                <label for="input-river-level" class="param-label">River Water Level (m)</label>
+                                <span id="val-river-level" class="param-val-badge">{{ initial_env.river_water_level_m }} m</span>
+                            </div>
+                            <input type="range" id="input-river-level" name="river_water_level_m" 
+                                   min="0.5" max="8.0" step="0.1" 
+                                   value="{{ initial_env.river_water_level_m }}" 
+                                   class="param-range" disabled>
+                            <span class="param-hint">Local warning: 3.5m - 4.5m; Danger: > {{ initial_env.danger_river_level_m }}m</span>
+                        </div>
+
+                        <!-- 3. Soil Moisture -->
+                        <div class="param-card">
+                            <div class="param-top">
+                                <label for="input-soil-moisture" class="param-label">Soil Moisture Saturation (%)</label>
+                                <span id="val-soil-moisture" class="param-val-badge">{{ initial_env.soil_moisture_pct }}%</span>
+                            </div>
+                            <input type="range" id="input-soil-moisture" name="soil_moisture_pct" 
+                                   min="10" max="100" step="1" 
+                                   value="{{ initial_env.soil_moisture_pct }}" 
+                                   class="param-range" disabled>
+                            <span class="param-hint">> 80% saturation yields zero infiltration</span>
+                        </div>
+
+                        <!-- 4. Drainage Capacity (NEW) -->
+                        <div class="param-card">
+                            <div class="param-top">
+                                <label for="input-drainage" class="param-label">Drainage Capacity (%)</label>
+                                <span id="val-drainage" class="param-val-badge">{{ initial_env.drainage_capacity_pct }}%</span>
+                            </div>
+                            <input type="range" id="input-drainage" name="drainage_capacity_pct" 
+                                   min="10" max="100" step="1" 
+                                   value="{{ initial_env.drainage_capacity_pct }}" 
+                                   class="param-range" disabled>
+                            <span class="param-hint">< 40% capacity creates severe urban waterlogging</span>
+                        </div>
+
+                        <!-- 5. Antecedent 7-day Rain -->
+                        <div class="param-card">
+                            <div class="param-top">
+                                <label for="input-prev-rain" class="param-label">7-Day Prior Rainfall (mm)</label>
+                                <span id="val-prev-rain" class="param-val-badge">{{ initial_env.prev_rainfall_7d_mm }} mm</span>
+                            </div>
+                            <input type="range" id="input-prev-rain" name="prev_rainfall_7d_mm" 
+                                   min="0" max="350" step="2" 
+                                   value="{{ initial_env.prev_rainfall_7d_mm }}" 
+                                   class="param-range" disabled>
+                            <span class="param-hint">Cumulative catchment ground saturation</span>
+                        </div>
+
+                        <!-- 6. Temperature -->
+                        <div class="param-card">
+                            <div class="param-top">
+                                <label for="input-temp" class="param-label">Temperature (°C)</label>
+                                <span id="val-temp" class="param-val-badge">{{ initial_env.temp_c }} °C</span>
+                            </div>
+                            <input type="range" id="input-temp" name="temp_c" 
+                                   min="15" max="45" step="0.5" 
+                                   value="{{ initial_env.temp_c }}" 
+                                   class="param-range" disabled>
+                            <span class="param-hint">Evaporation rate correlation</span>
+                        </div>
+
+                        <!-- 7. Humidity -->
+                        <div class="param-card">
+                            <div class="param-top">
+                                <label for="input-humidity" class="param-label">Relative Humidity (%)</label>
+                                <span id="val-humidity" class="param-val-badge">{{ initial_env.humidity_pct }}%</span>
+                            </div>
+                            <input type="range" id="input-humidity" name="humidity_pct" 
+                                   min="20" max="100" step="1" 
+                                   value="{{ initial_env.humidity_pct }}" 
+                                   class="param-range" disabled>
+                            <span class="param-hint">Suppresses surface water evaporation</span>
+                        </div>
+
+                    </div>
+
+                    <!-- Operational Scenario Presets -->
+                    <div id="sim-presets-panel" class="sim-presets-panel" style="display: none;">
+                        <span class="presets-title">Simulation Scenario Presets:</span>
+                        <div class="preset-buttons">
+                            <button type="button" class="btn btn-preset" data-scenario="dry">☀️ Normal Dry Day</button>
+                            <button type="button" class="btn btn-preset" data-scenario="monsoon">🌧️ Active Monsoon Downpour</button>
+                            <button type="button" class="btn btn-preset" data-scenario="drainage_choke">🚧 Urban Drainage Choke</button>
+                            <button type="button" class="btn btn-preset" data-scenario="river_surge">🌊 Upstream Dam River Surge</button>
+                            <button type="button" class="btn btn-preset" data-scenario="historic">🚨 July 2023 Catastrophic Flood</button>
+                        </div>
+                    </div>
+
+                    <!-- Hidden Fields for Location Topography -->
+                    <input type="hidden" id="input-elevation" name="elevation_m" value="{{ initial_env.elevation_m }}">
+                    <input type="hidden" id="input-distance" name="distance_to_river_km" value="{{ initial_env.distance_to_river_km }}">
+                    <input type="hidden" id="input-data-source" name="data_source" value="{{ initial_env.data_source }}">
+
+                    <!-- Submit / Predict Button -->
+                    <div class="form-actions">
+                        <button type="submit" id="btn-predict" class="btn btn-primary btn-block">
+                            Run Dual-Engine Machine Learning Assessment
+                        </button>
+                    </div>
+
+                </form>
+
+                <!-- ML Prediction & Cause-Aware Output Panel -->
+                <div id="prediction-result-panel" class="result-panel">
+                    <div class="result-box {{ initial_pred.prediction.badge_class }}">
+                        
+                        <div class="result-header">
+                            <div>
+                                <span class="result-meta-label">PREDICTED FLOOD RISK STATUS</span>
+                                <h3 id="result-risk-label" class="result-status-title">
+                                    {{ initial_pred.prediction.risk_label }} Risk
+                                </h3>
+                            </div>
+                            <div class="result-badge-container">
+                                <span id="result-confidence-badge" class="confidence-badge">
+                                    {{ initial_pred.prediction.confidence_pct }}% Confidence
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Continuous Composite Risk Score Meter -->
+                        <div class="composite-score-box">
+                            <div class="composite-score-header">
+                                <span class="composite-score-title">COMPOSITE FLOOD RISK INDEX</span>
+                                <span id="composite-score-val" class="composite-score-val">{{ initial_pred.prediction.composite_risk_score }} / 100</span>
+                            </div>
+                            <div class="composite-meter-track">
+                                <div id="composite-score-fill" class="composite-meter-fill {{ initial_pred.prediction.badge_class }}" style="width: {{ initial_pred.prediction.composite_risk_score }}%;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Cause-Aware Flood Classification Banner (FEATURE 2) -->
+                        <div id="cause-banner" class="cause-banner {{ initial_pred.probable_cause.badge_class }}">
+                            <div class="cause-header">
+                                <span class="cause-tag-label">IDENTIFIED PROBABLE CAUSE (ML DIAGNOSTIC)</span>
+                                <span id="cause-conf-badge" class="cause-confidence-tag">
+                                    {{ initial_pred.probable_cause.confidence_pct }}% Probable
+                                </span>
+                            </div>
+                            <h4 id="cause-title" class="cause-title">{{ initial_pred.probable_cause.title }}</h4>
+                            <p id="cause-explanation" class="cause-explanation">
+                                {{ initial_pred.probable_cause.explanation }}
+                            </p>
+
+                            <!-- Corroborating Telemetry Evidence Checklist -->
+                            <div id="cause-evidence-box" class="cause-evidence-box">
+                                <span class="cause-evidence-title">Telemetry Evidence (Corroborating Risk Factors):</span>
+                                <ul id="cause-evidence-list" class="cause-evidence-list">
+                                    {% for factor in initial_pred.probable_cause.supporting_factors %}
+                                    <li class="cause-evidence-item"><span class="cause-evidence-bullet">▸</span> {{ factor }}</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+
+                            <span class="cause-disclaimer">
+                                ℹ️ Probable cause classified using Random Forest multivariate feature weights; subject to local gauge verification.
+                            </span>
+                        </div>
+
+                        <!-- Class Probabilities Distribution Bar -->
+                        <div class="probabilities-container">
+                            <span class="prob-title">Random Forest Risk Probability Distribution:</span>
+                            <div class="prob-bars-grid">
+                                <div class="prob-row">
+                                    <span class="p-name">Low:</span>
+                                    <div class="p-track">
+                                        <div id="bar-prob-low" class="p-fill fill-low" style="width: {{ initial_pred.prediction.probabilities.Low }}%;"></div>
+                                    </div>
+                                    <span id="txt-prob-low" class="p-pct">{{ initial_pred.prediction.probabilities.Low }}%</span>
+                                </div>
+                                <div class="prob-row">
+                                    <span class="p-name">Moderate:</span>
+                                    <div class="p-track">
+                                        <div id="bar-prob-mod" class="p-fill fill-mod" style="width: {{ initial_pred.prediction.probabilities.Moderate }}%;"></div>
+                                    </div>
+                                    <span id="txt-prob-mod" class="p-pct">{{ initial_pred.prediction.probabilities.Moderate }}%</span>
+                                </div>
+                                <div class="prob-row">
+                                    <span class="p-name">High:</span>
+                                    <div class="p-track">
+                                        <div id="bar-prob-high" class="p-fill fill-high" style="width: {{ initial_pred.prediction.probabilities.High }}%;"></div>
+                                    </div>
+                                    <span id="txt-prob-high" class="p-pct">{{ initial_pred.prediction.probabilities.High }}%</span>
+                                </div>
+                                <div class="prob-row">
+                                    <span class="p-name">Severe:</span>
+                                    <div class="p-track">
+                                        <div id="bar-prob-sev" class="p-fill fill-sev" style="width: {{ initial_pred.prediction.probabilities.Severe }}%;"></div>
+                                    </div>
+                                    <span id="txt-prob-sev" class="p-pct">{{ initial_pred.prediction.probabilities.Severe }}%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Explainable AI (XAI) Quick Insights (FEATURE 6) -->
+                        <div class="xai-summary-box">
+                            <span class="xai-title">🔍 Explainable AI (XAI) Feature Attribution:</span>
+                            <div id="xai-elevating-list" class="xai-factors">
+                                {% for factor in initial_pred.explainability.elevating_factors %}
+                                <div class="xai-factor-item elevating">
+                                    <span class="xai-icon">⚠️</span>
+                                    <span class="xai-text">{{ factor }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+
+                            <!-- Interactive What-If Sensitivity Calculator (FEATURE 6) -->
+                            <div class="whatif-widget">
+                                <span class="whatif-title">⚡ Real-Time Sensitivity / What-If Explorer:</span>
+                                <div class="whatif-buttons">
+                                    <button type="button" class="btn-whatif" data-whatif="rain_25">+25mm Downpour</button>
+                                    <button type="button" class="btn-whatif" data-whatif="rain_50">+50mm Cloudburst</button>
+                                    <button type="button" class="btn-whatif" data-whatif="drainage_choke">Choke Drainage (-30%)</button>
+                                    <button type="button" class="btn-whatif" data-whatif="drainage_clear">Clear Drainage (+30%)</button>
+                                    <button type="button" class="btn-whatif" data-whatif="river_rise">River Surge (+1.0m)</button>
+                                    <button type="button" class="btn-whatif" data-whatif="reset">↺ Baseline</button>
+                                </div>
+                                <div id="whatif-outcome-card" class="whatif-outcome" style="display: none;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Action Plan Shortcut (FEATURE 8) -->
+                        <div class="advisory-box">
+                            <p id="result-summary" class="advisory-summary">
+                                <strong>Assessment:</strong> {{ initial_pred.prediction.summary }}
+                            </p>
+                            <p id="result-advisory" class="advisory-text">
+                                {{ initial_pred.prediction.advisory }}
+                            </p>
+                            <div class="action-item">
+                                <span class="action-tag">Operational Directive:</span>
+                                <span id="result-action" class="action-desc">{{ initial_pred.prediction.action }}</span>
+                            </div>
+                            <div class="response-link-wrap">
+                                <a id="link-response-plan" href="{{ url_for('response_planning', city=default_city) }}" class="btn btn-secondary btn-sm">
+                                    🛡️ View Full Response & Priority Plan for {{ default_city }} ➔
+                                </a>
+                            </div>
+                        </div>
+
+                        <div class="db-sync-notice">
+                            <span>💾 Logged to SQLite Database • Early Warning Alert Evaluated</span>
+                            <span id="result-timestamp" class="font-mono">Inference Active</span>
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </div>
+
+</div>
+
+<!-- Multi-Station Comparison Modal Dialog (FEATURE 3) -->
+<div id="comparison-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h3 class="modal-title">⚡ Punjab Regional Multi-Station Risk Comparison</h3>
+                <p class="card-subtitle">Comprehensive cross-basin comparison of rainfall, river surcharge, drainage bottlenecks, and risk tiers</p>
+            </div>
+            <button type="button" class="modal-close-btn" id="btn-close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="position: relative; height: 200px; margin-bottom: 20px;">
+                <canvas id="comparisonChart"></canvas>
+            </div>
+            <div class="table-responsive">
+                <table class="data-table" id="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>Station</th>
+                            <th>District</th>
+                            <th>Risk Tier</th>
+                            <th>Risk Score</th>
+                            <th>24h Rain</th>
+                            <th>River Stage / Danger</th>
+                            <th>Drainage</th>
+                            <th>Probable Cause</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="comparison-table-body">
+                        <!-- Populated via fetch -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% endblock %}
